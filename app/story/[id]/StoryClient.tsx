@@ -404,7 +404,7 @@ export default function StoryClient({
         .select('id')
         .eq('participant_id', participant.id);
 
-      const turnsTaken = participantTurns?.length ?? 0;
+      const turnsTaken = (participantTurns?.length ?? 0) + 1;
       const hasCompletedTurnQuota = turnsTaken >= (story.turns_per_writer ?? 1);
 
       const { error: updateParticipantError } = await supabase

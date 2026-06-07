@@ -181,7 +181,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
 
   const currentTurn = (turnsData?.length ?? 0) + 1;
   const nextParticipant = (allParticipants ?? [])
-    .filter((entry) => !entry.has_taken_turn && (turnsTakenByParticipant[entry.id] ?? 0) < (storyData.turns_per_writer ?? 1))
+    .filter((entry) => !entry.turn_skipped && (turnsTakenByParticipant[entry.id] ?? 0) < (storyData.turns_per_writer ?? 1))
     .sort((left, right) => {
       const leftTurns = turnsTakenByParticipant[left.id] ?? 0;
       const rightTurns = turnsTakenByParticipant[right.id] ?? 0;
