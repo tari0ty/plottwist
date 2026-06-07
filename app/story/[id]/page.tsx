@@ -220,6 +220,22 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
                 ) : null}
               </div>
             </div>
+
+            <StoryClient
+              storyId={id}
+              story={storyForClient}
+              turns={turnsData ?? []}
+              initialCanJoin={canJoin}
+              initialCurrentTurn={currentTurn}
+              initialCurrentParticipantId={nextParticipant?.user_id ?? null}
+              currentUsername={currentUsername}
+              turnsPerWriter={storyData.turns_per_writer ?? 1}
+              currentParticipantTurnCount={currentParticipantTurnCount}
+              initialLikeCount={likeCount ?? 0}
+              initialUserLiked={!!userLike}
+              theme={theme}
+              variant='header'
+            />
           </div>
         </article>
 

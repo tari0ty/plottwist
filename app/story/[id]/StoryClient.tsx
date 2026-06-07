@@ -77,7 +77,7 @@ export default function StoryClient({
   initialLikeCount: number;
   initialUserLiked: boolean;
   theme: GenreTheme;
-  variant?: 'timeline' | 'sidebar';
+  variant?: 'timeline' | 'sidebar' | 'header';
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -470,6 +470,21 @@ export default function StoryClient({
     router.refresh();
     setJoining(false);
   };
+
+  if (variant === 'header') {
+    return (
+      <button
+        type='button'
+        onClick={handleToggleLike}
+        disabled={liking}
+        className='inline-flex items-center gap-2 rounded-sm border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
+        style={{ borderColor: theme.border, backgroundColor: theme.surface, color: theme.accentText }}
+      >
+        <span className='text-base'>{userLiked ? '❤️' : '♡'}</span>
+        <span>{likeCount}</span>
+      </button>
+    );
+  }
 
   if (variant === 'sidebar') {
     return (
