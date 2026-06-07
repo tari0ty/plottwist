@@ -103,6 +103,7 @@ export default function StoryClient({
   const [liking, setLiking] = useState(false);
   const [requestStatus, setRequestStatus] = useState(joinRequestStatus ?? null);
   const [requestSubmitted, setRequestSubmitted] = useState(false);
+  const shouldShowJoinButton = initialCanJoin && requestStatus !== 'pending' && requestStatus !== 'accepted';
 
   useEffect(() => {
     let isMounted = true;
@@ -500,11 +501,20 @@ export default function StoryClient({
             <span>{likeCount}</span>
           </button>
 
-          {initialCanJoin ? (
+          {requestStatus === 'pending' || requestStatus === 'accepted' ? (
+            <span
+              className='rounded-sm border px-5 py-3 text-sm font-semibold'
+              style={{ borderColor: theme.border, backgroundColor: theme.surface, color: theme.accentText }}
+            >
+              {requestStatus === 'pending' ? 'Request Pending' : 'Request Accepted'}
+            </span>
+          ) : null}
+
+          {shouldShowJoinButton ? (
             <button
               type='button'
               onClick={handleJoinStory}
-              disabled={joining || requestStatus === 'pending' || requestStatus === 'declined' || requestSubmitted}
+              disabled={joining || requestStatus === 'declined' || requestSubmitted}
               className='rounded-sm px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
               style={{ backgroundColor: theme.accent, color: theme.bg }}
             >

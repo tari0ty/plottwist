@@ -191,6 +191,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   const canJoin = Boolean(
     user &&
       !participantData &&
+      joinRequestData?.status !== 'pending' &&
+      joinRequestData?.status !== 'accepted' &&
       (allParticipants?.length ?? 0) < (storyData.max_writers ?? 0),
   );
 
