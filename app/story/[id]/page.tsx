@@ -248,6 +248,22 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
                 </article>
               ))}
             </div>
+
+            <StoryClient
+              storyId={id}
+              story={storyForClient}
+              turns={turnsData ?? []}
+              initialCanJoin={canJoin}
+              initialCurrentTurn={currentTurn}
+              initialCurrentParticipantId={nextParticipant?.user_id ?? null}
+              currentUsername={currentUsername}
+              turnsPerWriter={storyData.turns_per_writer ?? 1}
+              currentParticipantTurnCount={currentParticipantTurnCount}
+              initialLikeCount={likeCount ?? 0}
+              initialUserLiked={!!userLike}
+              theme={theme}
+              variant='timeline'
+            />
           </article>
 
           <aside className='space-y-6'>
@@ -264,6 +280,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               initialLikeCount={likeCount ?? 0}
               initialUserLiked={!!userLike}
               theme={theme}
+              variant='sidebar'
             />
 
             <article className='border p-6' style={{ backgroundColor: theme.surface, borderColor: theme.border }}>

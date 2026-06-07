@@ -63,6 +63,7 @@ export default function StoryClient({
   initialLikeCount,
   initialUserLiked,
   theme,
+  variant = 'timeline',
 }: {
   storyId: string;
   story: StoryRecord;
@@ -76,6 +77,7 @@ export default function StoryClient({
   initialLikeCount: number;
   initialUserLiked: boolean;
   theme: GenreTheme;
+  variant?: 'timeline' | 'sidebar';
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -90,7 +92,6 @@ export default function StoryClient({
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [hoveredOption, setHoveredOption] = useState<number | null>(null);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const remainingPlotTwists = Math.max((turnsPerWriter ?? 1) - (currentParticipantTurnCount ?? 0), 0);
   const [userLiked, setUserLiked] = useState(initialUserLiked);
   const [liking, setLiking] = useState(false);
@@ -207,12 +208,16 @@ export default function StoryClient({
       }
     };
 
+    if (variant !== 'timeline') {
+      return;
+    }
+
     generateForkForTurn();
 
     return () => {
       isMounted = false;
     };
-  }, [story.id, storyId, supabase, turns.length]);
+  }, [story.id, storyId, supabase, turns.length, variant]);
 
   const handleLockInChoice = async () => {
     if (!selectedOption) {
@@ -466,45 +471,41 @@ export default function StoryClient({
     setJoining(false);
   };
 
-  const sidebarContent = (
-    <div className='space-y-6'>
-      <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
-        <div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
-          <div className='space-y-3'>
-            <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Story info</p>
-            <h2 className='text-2xl font-bold text-white'>{story.title}</h2>
-            <p className='text-sm text-[#bdbdb7]'>The story is currently waiting for collaborators and the next turn decision.</p>
-          </div>
+  if (variant === 'sidebar') {
+    return (
+      <aside className='space-y-4 rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
+        <div className='flex flex-wrap items-center gap-3'>
+          <button
+            type='button'
+            onClick={handleToggleLike}
+            disabled={liking}
+            className='inline-flex items-center gap-2 rounded-sm border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
+            style={{ borderColor: theme.border, backgroundColor: theme.surface, color: theme.accentText }}
+          >
+            <span className='text-base'>{userLiked ? '❤️' : '♡'}</span>
+            <span>{likeCount}</span>
+          </button>
 
-          <div className='flex flex-wrap items-center gap-3'>
+          {initialCanJoin ? (
             <button
               type='button'
-              onClick={handleToggleLike}
-              disabled={liking}
-              className='inline-flex items-center gap-2 rounded-sm border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
-              style={{ borderColor: theme.border, backgroundColor: theme.surface, color: theme.accentText }}
+              onClick={handleJoinStory}
+              disabled={joining}
+              className='rounded-sm px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
+              style={{ backgroundColor: theme.accent, color: theme.bg }}
             >
-              <span className='text-base'>{userLiked ? '❤️' : '♡'}</span>
-              <span>{likeCount}</span>
+              {joining ? 'Joining...' : 'Join Story'}
             </button>
-
-            {initialCanJoin ? (
-              <button
-                type='button'
-                onClick={handleJoinStory}
-                disabled={joining}
-                className='rounded-sm px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
-                style={{ backgroundColor: theme.accent, color: theme.bg }}
-              >
-                {joining ? 'Joining...' : 'Join Story'}
-              </button>
-            ) : null}
-          </div>
+          ) : null}
         </div>
 
-        {error ? <p className='mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100'>{error}</p> : null}
-      </article>
+        {error ? <p className='rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100'>{error}</p> : null}
+      </aside>
+    );
+  }
 
+  return (
+    <section className='space-y-6'>
       {((story.writer_count ?? 0) < (story.max_writers ?? 0)) ? (
         <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
           <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Invite Writers</p>
@@ -596,54 +597,6 @@ export default function StoryClient({
 
         {error ? <p className='mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100'>{error}</p> : null}
       </article>
-
-      {!choiceLocked ? (
-        <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
-          <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Plots so far</p>
-        <div className='mt-4 space-y-4'>
-          {turns?.map((turn) => (
-            <div key={turn.id} className='rounded-sm border p-4' style={{ borderColor: theme.border, backgroundColor: theme.surface }}>
-              <p className='text-sm' style={{ color: theme.accent }}>Plot {turn.turn_number}</p>
-              <p className='mt-1 text-[#f5f5f3]'>{turn.chosen_text}</p>
-            </div>
-          ))}
-        </div>
-        </article>
-      ) : null}
-    </div>
-  );
-
-  return (
-    <>
-      <div className='hidden lg:block'>
-        {sidebarContent}
-      </div>
-
-      <button
-        type='button'
-        aria-label='Open story sidebar'
-        onClick={() => setDrawerOpen(true)}
-        className='fixed top-[64px] right-4 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[#111111] text-xl text-[#e8d5b7] shadow-2xl lg:hidden'
-      >
-        ☰
-      </button>
-
-      <button
-        type='button'
-        aria-label='Close story sidebar'
-        onClick={() => setDrawerOpen(false)}
-        className={`fixed inset-0 z-40 bg-black/70 transition ${drawerOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'} lg:hidden`}
-      />
-
-      <div className={`fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-6xl justify-end px-3 pb-3 transition duration-200 lg:hidden ${drawerOpen ? 'translate-y-0' : 'translate-y-full'}`}>
-        <div className='w-full max-w-sm rounded-t-3xl border border-white/10 bg-[#0b0b0b] p-4 shadow-2xl'>
-          <div className='mb-3 flex items-center justify-between'>
-            <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Sidebar</p>
-            <button type='button' onClick={() => setDrawerOpen(false)} className='rounded-full border border-white/10 px-3 py-1 text-xs text-[#e8d5b7]'>Close</button>
-          </div>
-          {sidebarContent}
-        </div>
-      </div>
-    </>
+    </section>
   );
 }
