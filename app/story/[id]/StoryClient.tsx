@@ -64,6 +64,8 @@ export default function StoryClient({
   initialUserLiked,
   joinRequestStatus,
   theme,
+  isAuthor,
+  isParticipant,
   variant = 'timeline',
 }: {
   storyId: string;
@@ -79,6 +81,8 @@ export default function StoryClient({
   initialUserLiked: boolean;
   joinRequestStatus?: string | null;
   theme: GenreTheme;
+  isAuthor: boolean;
+  isParticipant: boolean;
   variant?: 'timeline' | 'sidebar' | 'header';
 }) {
   const router = useRouter();
@@ -212,7 +216,7 @@ export default function StoryClient({
       }
     };
 
-    if (variant !== 'timeline') {
+    if (variant !== 'timeline' || !isParticipant) {
       return;
     }
 
@@ -221,7 +225,7 @@ export default function StoryClient({
     return () => {
       isMounted = false;
     };
-  }, [story.id, storyId, supabase, turns.length, variant]);
+  }, [isParticipant, story.id, story.turns_per_writer, storyId, supabase, turns, turns.length, variant]);
 
   const handleLockInChoice = async () => {
     if (!selectedOption) {
@@ -524,7 +528,7 @@ export default function StoryClient({
 
   return (
     <section className='space-y-6'>
-      {((story.writer_count ?? 0) < (story.max_writers ?? 0)) ? (
+      {isAuthor && ((story.writer_count ?? 0) < (story.max_writers ?? 0)) ? (
         <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
           <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Invite Writers</p>
           <h3 className='mt-3 text-xl font-semibold text-white'>Bring more collaborators into this story</h3>
@@ -543,6 +547,7 @@ export default function StoryClient({
         </article>
       ) : null}
 
+      {isParticipant ? (
       <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
         <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Current turn</p>
         <div className='mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between'>
@@ -615,6 +620,7 @@ export default function StoryClient({
 
         {error ? <p className='mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100'>{error}</p> : null}
       </article>
+      ) : null}
     </section>
   );
 }

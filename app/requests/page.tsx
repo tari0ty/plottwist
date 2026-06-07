@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import { acceptJoinRequest, declineJoinRequest } from './actions';
+import { acceptJoinRequest } from './actions';
 
 const genreThemes = {
   horror: { bg: '#0a0000', surface: '#110000', border: '#2a0000', accent: '#ff4444', accentText: '#ff8888' },
@@ -23,16 +24,58 @@ export default async function RequestsPage() {
     redirect('/login');
   }
 
-  const { data: requestsData } = await supabase
+  async function declineJoinRequest(formData: FormData) {
+    'use server';
+
+    const requestId = String(formData.get('requestId') ?? '');
+    const storyId = String(formData.get('storyId') ?? '');
+    const supabase = await createClient();
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData.user) {
+      redirect('/login');
+    }
+
+    const { data: story } = await supabase
+      .from('stories')
+      .select('id, author_id')
+      .eq('id', storyId)
+      .single();
+
+    if (!story || story.author_id !== userData.user.id) {
+      redirect('/requests');
+    }
+
+    const { error: deleteError } = await supabase
+      .from('join_requests')
+      .delete()
+      .eq('id', requestId)
+      .eq('story_id', storyId);
+
+    if (deleteError) {
+      console.log('decline join request error', deleteError);
+    }
+
+    revalidatePath('/requests');
+    redirect('/requests');
+  }
+
+  const { data: requestsData, error: requestsError } = await supabase
     .from('join_requests')
-    .select('id, status, story_id, user_id, created_at, profiles(username), stories(id, title, genre, author_id, writer_count, max_writers)')
+    .select('*, profiles(username), stories(title, genre, author_id)')
     .order('created_at', { ascending: false });
 
-  const allRequests = (requestsData ?? []).filter((entry) => (entry.stories as Array<{ author_id?: string | null }> | undefined)?.[0]?.author_id === userData.user.id);
+  console.log('join requests query result', requestsData);
+  console.log('join requests query error', requestsError);
+
+  const allRequests = (requestsData ?? []).filter((entry) => {
+    const story = Array.isArray(entry.stories) ? entry.stories[0] : entry.stories;
+    return story?.author_id === userData.user.id;
+  });
 
   const pendingRequests = allRequests.filter((entry) => entry.status === 'pending');
   const acceptedRequests = allRequests.filter((entry) => entry.status === 'accepted');
-  const declinedRequests = allRequests.filter((entry) => entry.status === 'declined');
+  const visibleRequests = allRequests.filter((entry) => entry.status === 'pending' || entry.status === 'accepted');
 
   const groupByStory = (items: typeof allRequests) => {
     const grouped = new Map<string, typeof items[number][]>();
@@ -47,9 +90,8 @@ export default async function RequestsPage() {
     return grouped;
   };
 
-  const pendingGroups = groupByStory(pendingRequests);
+  const visibleGroups = groupByStory(visibleRequests);
   const acceptedGroups = groupByStory(acceptedRequests);
-  const declinedGroups = groupByStory(declinedRequests);
 
   return (
     <main className='min-h-screen bg-[#0a0a0a] text-white'>
@@ -67,9 +109,9 @@ export default async function RequestsPage() {
               <span className='rounded-sm border border-[#2a2a2a] bg-[#151515] px-3 py-1 text-xs uppercase tracking-[0.25em] text-[#e8d5b7]'>{pendingRequests.length} waiting</span>
             </div>
 
-            {pendingGroups.size > 0 ? (
+            {visibleGroups.size > 0 ? (
               <div className='space-y-6'>
-                {Array.from(pendingGroups.entries()).map(([storyId, items]) => {
+                {Array.from(visibleGroups.entries()).map(([storyId, items]) => {
                   const story = Array.isArray(items[0]?.stories) ? items[0].stories[0] : items[0]?.stories;
                   const theme = genreThemes[(story?.genre || '').toLowerCase() as keyof typeof genreThemes] ?? genreThemes.default;
 
@@ -97,25 +139,33 @@ export default async function RequestsPage() {
                                     <Link href={`/profile/${requester?.username ?? 'profile'}`} className='font-semibold text-white hover:text-[#e8d5b7]'>
                                       {requester?.username ?? 'Unknown writer'}
                                     </Link>
-                                    {' '}wants to join this story.
+                                    {request.status === 'accepted' ? ' joined this story.' : ' wants to join this story.'}
                                   </p>
                                   <p className='mt-1 text-xs uppercase tracking-[0.25em] text-[#bdbdb7]'>Requested {new Date(request.created_at ?? '').toLocaleDateString()}</p>
                                 </div>
                                 <div className='flex flex-wrap gap-3'>
-                                  <form action={acceptJoinRequest}>
-                                    <input type='hidden' name='requestId' value={request.id} />
-                                    <input type='hidden' name='storyId' value={request.story_id ?? storyId} />
-                                    <button type='submit' className='rounded-sm px-4 py-2 text-sm font-semibold text-[#111111] transition hover:opacity-90' style={{ backgroundColor: theme.accent }}>
-                                      Accept
-                                    </button>
-                                  </form>
-                                  <form action={declineJoinRequest}>
-                                    <input type='hidden' name='requestId' value={request.id} />
-                                    <input type='hidden' name='storyId' value={request.story_id ?? storyId} />
-                                    <button type='submit' className='rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#161616]'>
-                                      Decline
-                                    </button>
-                                  </form>
+                                  {request.status === 'accepted' ? (
+                                    <span className='rounded-sm border px-4 py-2 text-sm font-semibold' style={{ borderColor: theme.accent, backgroundColor: `${theme.accent}22`, color: theme.accentText }}>
+                                      Accepted
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <form action={acceptJoinRequest}>
+                                        <input type='hidden' name='requestId' value={request.id} />
+                                        <input type='hidden' name='storyId' value={request.story_id ?? storyId} />
+                                        <button type='submit' className='rounded-sm px-4 py-2 text-sm font-semibold text-[#111111] transition hover:opacity-90' style={{ backgroundColor: theme.accent }}>
+                                          Accept
+                                        </button>
+                                      </form>
+                                      <form action={declineJoinRequest}>
+                                        <input type='hidden' name='requestId' value={request.id} />
+                                        <input type='hidden' name='storyId' value={request.story_id ?? storyId} />
+                                        <button type='submit' className='rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#161616]'>
+                                          Decline
+                                        </button>
+                                      </form>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </article>
@@ -149,26 +199,6 @@ export default async function RequestsPage() {
                 </div>
               ) : (
                 <p className='mt-4 text-sm text-[#888888]'>No accepted requests yet.</p>
-              )}
-            </section>
-
-            <section className='rounded-sm border border-[#222222] bg-[#111111] p-6'>
-              <h2 className='font-serif text-2xl font-semibold text-white'>Declined requests</h2>
-              {declinedGroups.size > 0 ? (
-                <div className='mt-4 space-y-4'>
-                  {Array.from(declinedGroups.entries()).map(([storyId, items]) => {
-                    const story = Array.isArray(items[0]?.stories) ? items[0].stories[0] : items[0]?.stories;
-
-                    return (
-                      <article key={storyId} className='rounded-sm border border-[#2a2a2a] bg-[#151515] p-4'>
-                        <p className='text-sm font-semibold text-white'>{story?.title ?? 'Untitled story'}</p>
-                        <p className='mt-1 text-sm text-[#bdbdb7]'>{items.length} request{items.length === 1 ? '' : 's'} declined.</p>
-                      </article>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className='mt-4 text-sm text-[#888888]'>No declined requests yet.</p>
               )}
             </section>
           </article>

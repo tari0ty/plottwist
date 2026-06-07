@@ -247,6 +247,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               initialUserLiked={!!userLike}
               joinRequestStatus={joinRequestData?.status ?? null}
               theme={theme}
+              isAuthor={user?.id === storyData.author_id}
+              isParticipant={!!participantData}
               variant='header'
             />
           </div>
@@ -292,6 +294,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               initialUserLiked={!!userLike}
               joinRequestStatus={joinRequestData?.status ?? null}
               theme={theme}
+              isAuthor={user?.id === storyData.author_id}
+              isParticipant={!!participantData}
               variant='timeline'
             />
           </article>
@@ -311,6 +315,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               initialUserLiked={!!userLike}
               joinRequestStatus={joinRequestData?.status ?? null}
               theme={theme}
+              isAuthor={user?.id === storyData.author_id}
+              isParticipant={!!participantData}
               variant='sidebar'
             />
 
