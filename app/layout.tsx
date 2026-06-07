@@ -1,10 +1,22 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Navbar from '@/components/Navbar';
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PlotTwist — collaborative fiction",
-  description: "A dark editorial fiction app for collaborative storytelling.",
+  title: 'PlotTwist',
+  description: 'A collaborative storytelling app where groups build stories together through choices. No writing required — just decisions.',
+  openGraph: {
+    title: 'PlotTwist',
+    description: 'A collaborative storytelling app where groups build stories together through choices. No writing required — just decisions.',
+    url: 'https://plottwist-seven.vercel.app',
+    siteName: 'PlotTwist',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'PlotTwist',
+    description: 'A collaborative storytelling app where groups build stories together through choices. No writing required — just decisions.',
+  },
 };
 
 export default function RootLayout({
@@ -21,3 +33,4 @@ export default function RootLayout({
     </html>
   );
 }
+
