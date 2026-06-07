@@ -60,49 +60,6 @@ export default async function HomePage() {
   return (
     <main className='min-h-screen bg-[#0a0a0a] text-white'>
       <section className='mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8'>
-        <header className='sticky top-0 z-10 mb-8 border border-[#222222] bg-[#0a0a0a]/95 p-4 backdrop-blur'>
-          <nav className='flex items-center justify-between gap-4'>
-            <Link href='/' className='flex items-center gap-3 text-xl font-serif tracking-[0.08em] text-white'>
-              <span className='inline-flex h-10 w-10 items-center justify-center rounded-sm border border-[#2a2a2a] bg-[#111111] text-base font-black text-[#e8d5b7]'>P</span>
-              PlotTwist
-            </Link>
-
-            <div className='flex items-center gap-3'>
-              <Link
-                href='/create'
-                className='rounded-sm bg-[#e8d5b7] px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f0e3ce]'
-              >
-                Start a Story
-              </Link>
-
-              <Link
-                href='/completed'
-                className='rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'
-              >
-                Hall of Fame
-              </Link>
-
-              {user ? (
-                <Link
-                  href={`/profile/${profileData?.username ?? user.id}`}
-                  className='flex items-center gap-2 rounded-sm border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'
-                >
-                  <span className='inline-flex h-8 w-8 items-center justify-center rounded-sm bg-[#e8d5b7] text-xs font-black text-[#111111]'>
-                    {(profileData?.username ?? user.email ?? 'U').charAt(0).toUpperCase()}
-                  </span>
-                  <span>{profileData?.username ?? 'Profile'}</span>
-                </Link>
-              ) : (
-                <Link
-                  href='/login'
-                  className='rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'
-                >
-                  Sign In
-                </Link>
-              )}
-            </div>
-          </nav>
-        </header>
 
         <section className='mb-8 flex flex-col gap-4 border border-[#222222] bg-[#111111] p-6'>
           <p className='text-sm uppercase tracking-[0.35em] text-[#e8d5b7]'>Live story feed</p>

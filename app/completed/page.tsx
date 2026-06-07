@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
-import Navbar from '@/components/Navbar';
 
 const genreThemes = {
   horror: { bg: '#0a0000', surface: '#110000', border: '#2a0000', accent: '#ff4444', accentText: '#ff8888' },
@@ -64,7 +63,6 @@ export default async function CompletedPage() {
   return (
     <main className='min-h-screen bg-[#0a0a0a] text-white'>
       <section className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8'>
-        <Navbar />
         <header className='mb-8'>
           <div className='border border-[#222222] bg-[#111111] p-6'>
             <p className='text-sm uppercase tracking-[0.35em] text-[#e8d5b7]'>Hall of Fame</p>

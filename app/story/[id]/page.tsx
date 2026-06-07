@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import Navbar from '@/components/Navbar';
 import StoryClient from './StoryClient';
 
 const genreThemes = {
@@ -200,7 +199,6 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   return (
     <main className='min-h-screen text-white' style={{ backgroundColor: theme.bg }}>
       <section className='mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8'>
-        <Navbar />
         <article
           className='border p-6 md:p-8'
           style={{ backgroundColor: theme.surface, borderColor: theme.border }}

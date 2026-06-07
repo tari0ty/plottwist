@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import Navbar from '@/components/Navbar';
 
 const genreThemes = {
   horror: { bg: '#0a0000', surface: '#110000', border: '#2a0000', accent: '#ff4444', accentText: '#ff8888' },
@@ -83,7 +82,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   return (
     <main className='min-h-screen bg-[#0a0a0a] text-white'>
       <section className='mx-auto min-h-screen w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8'>
-        <Navbar />
         <header className='mb-8 border border-[#222222] bg-[#111111] p-6'>
           <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
             <div>

@@ -623,7 +623,7 @@ export default function StoryClient({
         type='button'
         aria-label='Open story sidebar'
         onClick={() => setDrawerOpen(true)}
-        className='fixed bottom-4 right-4 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[#111111] text-xl text-[#e8d5b7] shadow-2xl lg:hidden'
+        className='fixed top-[64px] right-4 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[#111111] text-xl text-[#e8d5b7] shadow-2xl lg:hidden'
       >
         ☰
       </button>
