@@ -154,6 +154,15 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
         .maybeSingle()
     : { data: null };
 
+  const { data: joinRequestData } = user
+    ? await supabase
+        .from('join_requests')
+        .select('status')
+        .eq('story_id', id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+    : { data: null };
+
   const { data: allParticipants } = await supabase
     .from('story_participants')
     .select('id, turn_order, has_taken_turn, user_id, profiles(username)')
@@ -184,6 +193,9 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
       !participantData &&
       (allParticipants?.length ?? 0) < (storyData.max_writers ?? 0),
   );
+
+  const isStoryCompleted = storyData.status === 'completed';
+  const isCurrentUserParticipant = Boolean(user && (allParticipants ?? []).some((entry) => entry.user_id === user.id));
 
   const authorName = storyData.profiles?.username ?? 'Unknown author';
   const currentParticipantTurnCount = nextParticipant ? (turnsTakenByParticipant[nextParticipant.id] ?? 0) : 0;
@@ -233,6 +245,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               currentParticipantTurnCount={currentParticipantTurnCount}
               initialLikeCount={likeCount ?? 0}
               initialUserLiked={!!userLike}
+              joinRequestStatus={joinRequestData?.status ?? null}
               theme={theme}
               variant='header'
             />
@@ -277,6 +290,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               currentParticipantTurnCount={currentParticipantTurnCount}
               initialLikeCount={likeCount ?? 0}
               initialUserLiked={!!userLike}
+              joinRequestStatus={joinRequestData?.status ?? null}
               theme={theme}
               variant='timeline'
             />
@@ -295,6 +309,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               currentParticipantTurnCount={currentParticipantTurnCount}
               initialLikeCount={likeCount ?? 0}
               initialUserLiked={!!userLike}
+              joinRequestStatus={joinRequestData?.status ?? null}
               theme={theme}
               variant='sidebar'
             />
@@ -303,13 +318,22 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Remix</p>
               <h3 className='mt-2 font-serif text-2xl font-semibold text-white'>Remix this story</h3>
               <p className='mt-3 text-sm text-[#888888]'>Take this story in a new direction and create a fresh branch from the current path.</p>
-              <Link
-                href={`/remix/${id}`}
-                className='mt-4 inline-flex rounded-sm px-5 py-3 text-sm font-semibold transition hover:opacity-90'
-                style={{ backgroundColor: theme.accent, color: theme.bg }}
-              >
-                Remix this story
-              </Link>
+
+              {!isStoryCompleted ? (
+                <p className='mt-4 rounded-sm border border-[#2a2a2a] bg-[#151515] p-4 text-sm text-[#f5f5f3]'>Remixes unlock when the story is complete</p>
+              ) : !user ? (
+                <p className='mt-4 rounded-sm border border-[#2a2a2a] bg-[#151515] p-4 text-sm text-[#f5f5f3]'>Sign in as a writer of this story to remix it</p>
+              ) : !isCurrentUserParticipant ? (
+                <p className='mt-4 rounded-sm border border-[#2a2a2a] bg-[#151515] p-4 text-sm text-[#f5f5f3]'>Only writers of this story can remix it</p>
+              ) : (
+                <Link
+                  href={`/remix/${id}`}
+                  className='mt-4 inline-flex rounded-sm px-5 py-3 text-sm font-semibold transition hover:opacity-90'
+                  style={{ backgroundColor: theme.accent, color: theme.bg }}
+                >
+                  Remix this story
+                </Link>
+              )}
             </article>
           </aside>
         </section>

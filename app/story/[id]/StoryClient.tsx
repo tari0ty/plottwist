@@ -62,6 +62,7 @@ export default function StoryClient({
   currentParticipantTurnCount,
   initialLikeCount,
   initialUserLiked,
+  joinRequestStatus,
   theme,
   variant = 'timeline',
 }: {
@@ -76,6 +77,7 @@ export default function StoryClient({
   currentParticipantTurnCount?: number;
   initialLikeCount: number;
   initialUserLiked: boolean;
+  joinRequestStatus?: string | null;
   theme: GenreTheme;
   variant?: 'timeline' | 'sidebar' | 'header';
 }) {
@@ -95,6 +97,8 @@ export default function StoryClient({
   const remainingPlotTwists = Math.max((turnsPerWriter ?? 1) - (currentParticipantTurnCount ?? 0), 0);
   const [userLiked, setUserLiked] = useState(initialUserLiked);
   const [liking, setLiking] = useState(false);
+  const [requestStatus, setRequestStatus] = useState(joinRequestStatus ?? null);
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -419,56 +423,47 @@ export default function StoryClient({
     setError(null);
     setJoining(true);
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) {
-      setError('You must be signed in to join this story.');
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        setError('You must be signed in to request a place in this story.');
+        return;
+      }
+
+      const { data: existingRequest } = await supabase
+        .from('join_requests')
+        .select('id, status')
+        .eq('story_id', storyId)
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+
+      if (existingRequest) {
+        setRequestStatus(existingRequest.status ?? 'pending');
+        setRequestSubmitted(existingRequest.status === 'pending');
+        setError(null);
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from('join_requests')
+        .insert({
+          story_id: storyId,
+          user_id: userData.user.id,
+          status: 'pending',
+        });
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+
+      setRequestStatus('pending');
+      setRequestSubmitted(true);
+      router.refresh();
+    } catch (joinError) {
+      setError(joinError instanceof Error ? joinError.message : 'Unable to send your join request.');
+    } finally {
       setJoining(false);
-      return;
     }
-
-    const { data: participants } = await supabase
-      .from('story_participants')
-      .select('turn_order')
-      .eq('story_id', storyId)
-      .order('turn_order', { ascending: true });
-
-    const participantRows = participants ?? [];
-    const nextTurnOrder = participantRows.length > 0
-      ? Math.max(...participantRows.map((entry) => entry.turn_order ?? 0)) + 1
-      : 1;
-
-    const { error: insertError } = await supabase.from('story_participants').insert({
-      story_id: storyId,
-      user_id: userData.user.id,
-      turn_order: nextTurnOrder,
-      has_taken_turn: false,
-    });
-
-    if (insertError) {
-      setError(insertError.message);
-      setJoining(false);
-      return;
-    }
-
-    const nextWriterCount = (story.writer_count ?? 0) + 1;
-    const shouldLock = nextWriterCount >= (story.max_writers ?? 0);
-
-    const { error: updateError } = await supabase
-      .from('stories')
-      .update({
-        writer_count: nextWriterCount,
-        milestone_locked: shouldLock,
-      })
-      .eq('id', storyId);
-
-    if (updateError) {
-      setError(updateError.message);
-      setJoining(false);
-      return;
-    }
-
-    router.refresh();
-    setJoining(false);
   };
 
   if (variant === 'header') {
@@ -505,11 +500,19 @@ export default function StoryClient({
             <button
               type='button'
               onClick={handleJoinStory}
-              disabled={joining}
+              disabled={joining || requestStatus === 'pending' || requestStatus === 'declined' || requestSubmitted}
               className='rounded-sm px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
               style={{ backgroundColor: theme.accent, color: theme.bg }}
             >
-              {joining ? 'Joining...' : 'Join Story'}
+              {joining
+                ? 'Sending request...'
+                : requestStatus === 'declined'
+                  ? 'Request Declined'
+                  : requestSubmitted
+                    ? 'Request Sent'
+                    : requestStatus === 'pending'
+                      ? 'Request Pending'
+                      : 'Join Story'}
             </button>
           ) : null}
         </div>

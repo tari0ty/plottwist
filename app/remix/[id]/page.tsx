@@ -29,20 +29,39 @@ export default async function RemixPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const supabase = await createClient();
 
-  // Check if user is authenticated
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
-    redirect('/login');
+  const { data: storyData, error: storyError } = await supabase
+    .from('stories')
+    .select('id, status')
+    .eq('id', id)
+    .single();
+
+  if (storyError || !storyData || storyData.status !== 'completed') {
+    redirect(`/story/${id}`);
   }
 
-  // Fetch the original story
-  const { data: originalStory, error: storyError } = await supabase
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) {
+    redirect(`/story/${id}`);
+  }
+
+  const { data: participantRows } = await supabase
+    .from('story_participants')
+    .select('user_id')
+    .eq('story_id', id);
+
+  const isParticipant = (participantRows ?? []).some((entry) => entry.user_id === userData.user.id);
+
+  if (!isParticipant) {
+    redirect(`/story/${id}`);
+  }
+
+  const { data: originalStory, error: originalStoryError } = await supabase
     .from('stories')
     .select('id, title, opening_line, genre, author_id, profiles(username)')
     .eq('id', id)
     .single();
 
-  if (storyError || !originalStory) {
+  if (originalStoryError || !originalStory) {
     notFound();
   }
 

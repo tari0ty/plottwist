@@ -6,9 +6,11 @@ import Link from 'next/link';
 export default function NavbarClient({
   username,
   isLoggedIn,
+  pendingRequestCount = 0,
 }: {
   username: string;
   isLoggedIn: boolean;
+  pendingRequestCount?: number;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -29,15 +31,28 @@ export default function NavbarClient({
           </Link>
 
           {isLoggedIn ? (
-            <Link
-              href={`/profile/${username}`}
-              className='flex items-center gap-2 rounded-sm border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'
-            >
-              <span className='inline-flex h-8 w-8 items-center justify-center rounded-sm bg-[#e8d5b7] text-xs font-black text-[#111111]'>
-                {username.charAt(0).toUpperCase()}
-              </span>
-              <span>{username}</span>
-            </Link>
+            <>
+              <Link
+                href='/requests'
+                className='relative inline-flex items-center rounded-sm border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'
+              >
+                Requests
+                {pendingRequestCount > 0 ? (
+                  <span className='ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ff4444] px-1 text-[10px] font-black text-white'>
+                    {pendingRequestCount}
+                  </span>
+                ) : null}
+              </Link>
+              <Link
+                href={`/profile/${username}`}
+                className='flex items-center gap-2 rounded-sm border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'
+              >
+                <span className='inline-flex h-8 w-8 items-center justify-center rounded-sm bg-[#e8d5b7] text-xs font-black text-[#111111]'>
+                  {username.charAt(0).toUpperCase()}
+                </span>
+                <span>{username}</span>
+              </Link>
+            </>
           ) : (
             <Link href='/login' className='rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'>
               Sign In
@@ -65,9 +80,15 @@ export default function NavbarClient({
             Start a Story
           </Link>
           {isLoggedIn ? (
-            <Link href={`/profile/${username}`} onClick={() => setMobileMenuOpen(false)} className='block rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-3 text-sm font-semibold text-[#f5f5f3]'>
-              Profile
-            </Link>
+            <>
+              <Link href='/requests' onClick={() => setMobileMenuOpen(false)} className='block rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-3 text-sm font-semibold text-[#f5f5f3]'>
+                Requests
+                {pendingRequestCount > 0 ? <span className='ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ff4444] px-1 text-[10px] font-black text-white'>{pendingRequestCount}</span> : null}
+              </Link>
+              <Link href={`/profile/${username}`} onClick={() => setMobileMenuOpen(false)} className='block rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-3 text-sm font-semibold text-[#f5f5f3]'>
+                Profile
+              </Link>
+            </>
           ) : (
             <Link href='/login' onClick={() => setMobileMenuOpen(false)} className='block rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-3 text-sm font-semibold text-[#f5f5f3]'>
               Sign In
