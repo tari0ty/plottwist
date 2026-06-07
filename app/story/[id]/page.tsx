@@ -201,7 +201,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
 
   const authorName = storyData.profiles?.username ?? 'Unknown author';
   const currentParticipantTurnCount = nextParticipant ? (turnsTakenByParticipant[nextParticipant.id] ?? 0) : 0;
-  const currentUsername = nextParticipant?.profiles?.[0]?.username ?? 'Someone';
+  const currentProfile = nextParticipant?.profiles as { username?: string | null } | null | undefined;
+  const currentUsername = currentProfile?.username ?? 'Someone';
   const storyForClient = {
     id: storyData.id,
     title: storyData.title,
