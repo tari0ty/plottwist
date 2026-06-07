@@ -28,6 +28,41 @@ function getGenreTheme(genre?: string | null) {
   }
 }
 
+function getStatusBadge(status?: string | null, accent?: string) {
+  switch (status) {
+    case 'recruiting':
+      return {
+        label: 'Looking for Writers',
+        border: accent ?? '#e8d5b7',
+        bg: `${accent ?? '#e8d5b7'}22`,
+        color: accent ?? '#e8d5b7',
+      };
+    case 'active':
+      return {
+        label: 'In Progress',
+        border: '#64748b',
+        bg: '#0f172a',
+        color: '#cbd5e1',
+      };
+    case 'voting':
+      return {
+        label: 'Choose the Ending',
+        border: '#facc15',
+        bg: '#422006',
+        color: '#fde68a',
+      };
+    case 'completed':
+      return {
+        label: 'Completed',
+        border: '#52525b',
+        bg: '#18181b',
+        color: '#d4d4d8',
+      };
+    default:
+      return null;
+  }
+}
+
 export default async function HomePage() {
   const supabase = await createClient();
 
@@ -84,6 +119,7 @@ export default async function HomePage() {
               const authorName = story.profiles?.username ?? 'Unknown author';
               const openingLine = truncate(story.opening_line || story.title || 'A story begins here.', 100);
               const theme = getGenreTheme(story.genre);
+              const statusBadge = getStatusBadge(story.status, theme.accent);
 
               return (
                 <Link
@@ -125,8 +161,10 @@ export default async function HomePage() {
                           ❤️ {story.likes_count} likes
                         </span>
                       ) : null}
-                      {story.status === 'completed' ? (
-                        <span className='rounded-sm border px-3 py-1.5' style={{ borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }}>Completed</span>
+                      {statusBadge ? (
+                        <span className='rounded-sm border px-3 py-1.5 font-semibold' style={{ borderColor: statusBadge.border, backgroundColor: statusBadge.bg, color: statusBadge.color }}>
+                          {statusBadge.label}
+                        </span>
                       ) : null}
                       {(story.remix_count ?? 0) > 0 ? (
                         <span className='rounded-sm border px-3 py-1.5' style={{ borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }}>
@@ -144,4 +182,3 @@ export default async function HomePage() {
     </main>
   );
 }
-

@@ -50,7 +50,7 @@ export default function CreateStoryPage() {
         max_writers: maxWriters,
         turns_per_writer: turnsPerWriter,
         writer_count: 1,
-        status: 'active',
+        status: 'recruiting',
       })
       .select('id')
       .single();

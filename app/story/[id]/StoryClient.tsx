@@ -66,6 +66,7 @@ export default function StoryClient({
   theme,
   isAuthor,
   isParticipant,
+  storyStatus,
   variant = 'timeline',
 }: {
   storyId: string;
@@ -83,6 +84,7 @@ export default function StoryClient({
   theme: GenreTheme;
   isAuthor: boolean;
   isParticipant: boolean;
+  storyStatus: string;
   variant?: 'timeline' | 'sidebar' | 'header';
 }) {
   const router = useRouter();
@@ -103,7 +105,9 @@ export default function StoryClient({
   const [liking, setLiking] = useState(false);
   const [requestStatus, setRequestStatus] = useState(joinRequestStatus ?? null);
   const [requestSubmitted, setRequestSubmitted] = useState(false);
-  const shouldShowJoinButton = initialCanJoin && requestStatus !== 'pending' && requestStatus !== 'accepted';
+  const [startingStory, setStartingStory] = useState(false);
+  const shouldShowJoinButton = initialCanJoin && storyStatus !== 'active' && storyStatus !== 'completed' && requestStatus !== 'pending' && requestStatus !== 'accepted';
+  const canStartStory = (story.writer_count ?? 0) >= 2;
 
   useEffect(() => {
     let isMounted = true;
@@ -217,7 +221,7 @@ export default function StoryClient({
       }
     };
 
-    if (variant !== 'timeline' || !isParticipant) {
+    if (variant !== 'timeline' || !isParticipant || storyStatus === 'recruiting') {
       return;
     }
 
@@ -226,7 +230,7 @@ export default function StoryClient({
     return () => {
       isMounted = false;
     };
-  }, [isParticipant, story.id, story.turns_per_writer, storyId, supabase, turns, turns.length, variant]);
+  }, [isParticipant, story.id, story.turns_per_writer, storyId, storyStatus, supabase, turns, turns.length, variant]);
 
   const handleLockInChoice = async () => {
     if (!selectedOption) {
@@ -471,6 +475,42 @@ export default function StoryClient({
     }
   };
 
+  const handleStartStory = async () => {
+    if (!canStartStory) {
+      return;
+    }
+
+    setError(null);
+    setStartingStory(true);
+
+    try {
+      const { error: updateStoryError } = await supabase
+        .from('stories')
+        .update({ status: 'active' })
+        .eq('id', storyId);
+
+      if (updateStoryError) {
+        throw new Error(updateStoryError.message);
+      }
+
+      const { error: deleteRequestsError } = await supabase
+        .from('join_requests')
+        .delete()
+        .eq('story_id', storyId)
+        .eq('status', 'pending');
+
+      if (deleteRequestsError) {
+        throw new Error(deleteRequestsError.message);
+      }
+
+      router.refresh();
+    } catch (startError) {
+      setError(startError instanceof Error ? startError.message : 'Unable to start this story.');
+    } finally {
+      setStartingStory(false);
+    }
+  };
+
   if (variant === 'header') {
     return (
       <button
@@ -529,6 +569,19 @@ export default function StoryClient({
                       : 'Join Story'}
             </button>
           ) : null}
+
+          {isAuthor && storyStatus === 'recruiting' ? (
+            <button
+              type='button'
+              onClick={handleStartStory}
+              disabled={!canStartStory || startingStory}
+              title={!canStartStory ? 'Need at least 2 writers to start' : undefined}
+              className='rounded-sm px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70'
+              style={{ backgroundColor: theme.accent, color: theme.bg }}
+            >
+              {startingStory ? 'Starting...' : 'Start Story'}
+            </button>
+          ) : null}
         </div>
 
         {error ? <p className='rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100'>{error}</p> : null}
@@ -557,7 +610,11 @@ export default function StoryClient({
         </article>
       ) : null}
 
-      {isParticipant ? (
+      {storyStatus === 'recruiting' ? (
+        <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
+          <p className='text-sm text-[#f5f5f3]'>This story is recruiting writers. The author will start the story once the lineup is ready.</p>
+        </article>
+      ) : isParticipant ? (
       <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
         <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Current turn</p>
         <div className='mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between'>

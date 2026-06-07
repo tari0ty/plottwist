@@ -252,6 +252,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               theme={theme}
               isAuthor={user?.id === storyData.author_id}
               isParticipant={!!participantData}
+              storyStatus={storyData.status}
               variant='header'
             />
           </div>
@@ -299,6 +300,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               theme={theme}
               isAuthor={user?.id === storyData.author_id}
               isParticipant={!!participantData}
+              storyStatus={storyData.status}
               variant='timeline'
             />
           </article>
@@ -320,6 +322,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               theme={theme}
               isAuthor={user?.id === storyData.author_id}
               isParticipant={!!participantData}
+              storyStatus={storyData.status}
               variant='sidebar'
             />
 
