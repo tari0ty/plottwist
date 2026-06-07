@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
@@ -135,9 +136,11 @@ export default function StoryClient({
   const [startingStory, setStartingStory] = useState(false);
   const [autoSkipping, setAutoSkipping] = useState(false);
   const [, setCountdownTick] = useState(0);
-  const shouldShowJoinButton = initialCanJoin && storyStatus !== 'active' && storyStatus !== 'completed' && requestStatus !== 'pending' && requestStatus !== 'accepted';
+  const [currentStoryStatus, setCurrentStoryStatus] = useState(storyStatus);
+  const shouldShowJoinButton = initialCanJoin && currentStoryStatus !== 'active' && currentStoryStatus !== 'completed' && requestStatus !== 'pending' && requestStatus !== 'accepted';
   const canStartStory = (story.writer_count ?? 0) >= 2;
   const currentParticipant = allParticipants.find((entry) => entry.user_id === initialCurrentParticipantId) ?? null;
+  const nextParticipant = currentStoryStatus === 'completed' ? null : currentParticipant;
   const currentParticipantIndex = currentParticipant ? allParticipants.findIndex((entry) => entry.id === currentParticipant.id) : -1;
   const previousParticipant = currentParticipantIndex >= 0 && allParticipants.length > 1
     ? allParticipants[(currentParticipantIndex - 1 + allParticipants.length) % allParticipants.length]
@@ -308,7 +311,7 @@ export default function StoryClient({
       }
     };
 
-    if (variant !== 'timeline' || !isParticipant || storyStatus === 'recruiting') {
+    if (variant !== 'timeline' || !isParticipant || currentStoryStatus === 'recruiting') {
       return;
     }
 
@@ -317,7 +320,7 @@ export default function StoryClient({
     return () => {
       isMounted = false;
     };
-  }, [isParticipant, story.id, story.turns_per_writer, storyId, storyStatus, supabase, turns, turns.length, variant]);
+  }, [currentStoryStatus, isParticipant, story.id, story.turns_per_writer, storyId, supabase, turns, turns.length, variant]);
 
   const handleLockInChoice = async () => {
     if (!selectedOption) {
@@ -445,6 +448,9 @@ export default function StoryClient({
           .update({ status: 'completed' })
           .eq('id', storyId);
         console.log('completion error:', completeError);
+        if (!completeError) {
+          setCurrentStoryStatus('completed');
+        }
       }
 
       setChoiceLocked(true);
@@ -651,7 +657,7 @@ export default function StoryClient({
             </button>
           ) : null}
 
-          {isAuthor && storyStatus === 'recruiting' ? (
+          {isAuthor && currentStoryStatus === 'recruiting' ? (
             <button
               type='button'
               onClick={handleStartStory}
@@ -691,7 +697,17 @@ export default function StoryClient({
         </article>
       ) : null}
 
-      {storyStatus === 'recruiting' ? (
+      {currentStoryStatus === 'completed' && !nextParticipant ? (
+        <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
+          <p className='text-sm text-[#f5f5f3]'>
+            This story is complete! Head to the{' '}
+            <Link href='/completed' className='font-semibold hover:underline' style={{ color: theme.accent }}>
+              Hall of Fame
+            </Link>
+            {' '}to read it.
+          </p>
+        </article>
+      ) : currentStoryStatus === 'recruiting' ? (
         <article className='rounded-sm border p-4 shadow-sm lg:p-5' style={{ backgroundColor: '#141414', borderColor: theme.border }}>
           <p className='text-sm text-[#f5f5f3]'>This story is recruiting writers. The author will start the story once the lineup is ready.</p>
         </article>
@@ -714,7 +730,11 @@ export default function StoryClient({
             ) : null}
           </div>
           <div className='rounded-sm border px-4 py-3 text-sm' style={{ borderColor: theme.border, backgroundColor: theme.surface, color: theme.accent }}>
-            {remainingPlotTwists} plot twist{remainingPlotTwists === 1 ? '' : 's'} remaining
+            {remainingPlotTwists === 0
+              ? '0 plot twists remaining'
+              : remainingPlotTwists === 1
+                ? 'Final plot twist'
+                : `${remainingPlotTwists} plot twists remaining`}
           </div>
         </div>
 
@@ -727,6 +747,11 @@ export default function StoryClient({
 
         {forkOptions.length > 0 && !choiceLocked ? (
           <div className='mt-4 space-y-3'>
+            {remainingPlotTwists === 1 ? (
+              <p style={{ color: theme.accent }} className='mb-3 text-xs font-bold uppercase tracking-widest'>
+                ⚡ This is your final plot twist
+              </p>
+            ) : null}
             {forkOptions.map((option, index) => (
               <button
                 key={option.id ?? `${option.content}-${index}`}
@@ -749,7 +774,9 @@ export default function StoryClient({
                   color: theme.accentText,
                 }}
               >
-                <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Plot Twist {index + 1}</p>
+                <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>
+                  {remainingPlotTwists === 1 ? 'Final Plot Twist' : 'Plot Twist'} {index + 1}
+                </p>
                 <p className='mt-2 text-base font-semibold text-white'>{option.content}</p>
               </button>
             ))}
