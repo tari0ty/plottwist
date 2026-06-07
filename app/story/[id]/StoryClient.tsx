@@ -416,6 +416,9 @@ export default function StoryClient({
         throw new Error(updateParticipantError.message);
       }
 
+      // Wait briefly for the update to propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const { data: freshParticipants } = await supabase
         .from('story_participants')
         .select('has_taken_turn')
@@ -423,11 +426,15 @@ export default function StoryClient({
 
       const allDone = (freshParticipants ?? []).every((p) => p.has_taken_turn === true);
 
+      console.log('freshParticipants:', freshParticipants);
+      console.log('allDone:', allDone);
+
       if (allDone) {
-        await supabase
+        const { error: completeError } = await supabase
           .from('stories')
           .update({ status: 'completed' })
           .eq('id', storyId);
+        console.log('completeError:', completeError);
       }
 
       setChoiceLocked(true);
