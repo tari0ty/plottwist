@@ -26,6 +26,11 @@ export default function NavbarClient({
           <Link href='/completed' className='rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'>
             Hall of Fame
           </Link>
+          {isLoggedIn ? (
+            <Link href='/my-stories' className='rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-2 text-sm font-semibold text-[#f5f5f3] transition hover:border-[#3a3a3a] hover:bg-[#161616]'>
+              My Stories
+            </Link>
+          ) : null}
           <Link href='/create' className='rounded-sm bg-[#e8d5b7] px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f0e3ce]'>
             Start a Story
           </Link>
@@ -76,6 +81,11 @@ export default function NavbarClient({
           <Link href='/completed' onClick={() => setMobileMenuOpen(false)} className='block rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-3 text-sm font-semibold text-[#f5f5f3]'>
             Hall of Fame
           </Link>
+          {isLoggedIn ? (
+            <Link href='/my-stories' onClick={() => setMobileMenuOpen(false)} className='block rounded-sm border border-[#2a2a2a] bg-[#111111] px-4 py-3 text-sm font-semibold text-[#f5f5f3]'>
+              My Stories
+            </Link>
+          ) : null}
           <Link href='/create' onClick={() => setMobileMenuOpen(false)} className='block rounded-sm bg-[#e8d5b7] px-4 py-3 text-sm font-semibold text-[#111111]'>
             Start a Story
           </Link>

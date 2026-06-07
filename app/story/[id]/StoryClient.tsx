@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
@@ -16,6 +16,13 @@ interface StoryParticipant {
   user_id: string;
   turn_order: number;
   has_taken_turn: boolean;
+  turn_skipped?: boolean | null;
+  turn_started_at?: string | null;
+  profiles?: {
+    username?: string | null;
+  } | {
+    username?: string | null;
+  }[] | null;
 }
 
 interface StoryRecord {
@@ -50,6 +57,22 @@ interface GenreTheme {
   gradient: string;
 }
 
+function formatRemainingTime(deadline: string | null) {
+  if (!deadline) {
+    return null;
+  }
+
+  const remainingMs = new Date(deadline).getTime() - Date.now();
+  if (remainingMs <= 0) {
+    return '0h 0m remaining';
+  }
+
+  const totalMinutes = Math.ceil(remainingMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m remaining`;
+}
+
 export default function StoryClient({
   storyId,
   story,
@@ -67,6 +90,8 @@ export default function StoryClient({
   isAuthor,
   isParticipant,
   storyStatus,
+  turnDeadline,
+  allParticipants,
   variant = 'timeline',
 }: {
   storyId: string;
@@ -85,6 +110,8 @@ export default function StoryClient({
   isAuthor: boolean;
   isParticipant: boolean;
   storyStatus: string;
+  turnDeadline: string | null;
+  allParticipants: StoryParticipant[];
   variant?: 'timeline' | 'sidebar' | 'header';
 }) {
   const router = useRouter();
@@ -106,8 +133,68 @@ export default function StoryClient({
   const [requestStatus, setRequestStatus] = useState(joinRequestStatus ?? null);
   const [requestSubmitted, setRequestSubmitted] = useState(false);
   const [startingStory, setStartingStory] = useState(false);
+  const [autoSkipping, setAutoSkipping] = useState(false);
+  const [, setCountdownTick] = useState(0);
   const shouldShowJoinButton = initialCanJoin && storyStatus !== 'active' && storyStatus !== 'completed' && requestStatus !== 'pending' && requestStatus !== 'accepted';
   const canStartStory = (story.writer_count ?? 0) >= 2;
+  const currentParticipant = allParticipants.find((entry) => entry.user_id === initialCurrentParticipantId) ?? null;
+  const currentParticipantIndex = currentParticipant ? allParticipants.findIndex((entry) => entry.id === currentParticipant.id) : -1;
+  const previousParticipant = currentParticipantIndex >= 0 && allParticipants.length > 1
+    ? allParticipants[(currentParticipantIndex - 1 + allParticipants.length) % allParticipants.length]
+    : null;
+  const inheritedSkippedTurn = Boolean(isCurrentUsersTurn && previousParticipant?.turn_skipped);
+  const timeRemaining = isCurrentUsersTurn ? formatRemainingTime(turnDeadline) : null;
+
+  const handleAutoSkipTurn = useCallback(async () => {
+    if (!currentParticipant || autoSkipping) {
+      return;
+    }
+
+    setAutoSkipping(true);
+    setError(null);
+
+    try {
+      const { error: skipError } = await supabase
+        .from('story_participants')
+        .update({
+          turn_skipped: true,
+          has_taken_turn: true,
+        })
+        .eq('id', currentParticipant.id);
+
+      if (skipError) {
+        throw new Error(skipError.message);
+      }
+
+      router.refresh();
+    } catch (skipError) {
+      setError(skipError instanceof Error ? skipError.message : 'Unable to skip this turn automatically.');
+    } finally {
+      setAutoSkipping(false);
+    }
+  }, [autoSkipping, currentParticipant, router, supabase]);
+
+  useEffect(() => {
+    if (variant !== 'timeline' || !isCurrentUsersTurn || !turnDeadline) {
+      return;
+    }
+
+    const updateCountdown = () => {
+      setCountdownTick((current) => current + 1);
+
+      if (new Date(turnDeadline).getTime() <= Date.now()) {
+        handleAutoSkipTurn();
+      }
+    };
+
+    const timeoutId = window.setTimeout(updateCountdown, 0);
+    const intervalId = window.setInterval(updateCountdown, 60000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, [handleAutoSkipTurn, isCurrentUsersTurn, turnDeadline, variant]);
 
   useEffect(() => {
     let isMounted = true;
@@ -623,6 +710,14 @@ export default function StoryClient({
             <p className='mt-1 text-sm text-[#bdbdb7]'>
               {isCurrentUsersTurn ? 'Your turn — choose the next plot twist.' : 'This writer is currently choosing the next plot twist.'}
             </p>
+            {isCurrentUsersTurn && timeRemaining ? (
+              <p className='mt-2 text-sm font-semibold' style={{ color: theme.accent }}>{timeRemaining}</p>
+            ) : null}
+            {inheritedSkippedTurn ? (
+              <p className='mt-3 rounded-sm border p-3 text-sm' style={{ borderColor: theme.accent, backgroundColor: `${theme.accent}15`, color: theme.accentText }}>
+                The previous writer ran out of time. Their choices are now yours.
+              </p>
+            ) : null}
           </div>
           <div className='rounded-sm border px-4 py-3 text-sm' style={{ borderColor: theme.border, backgroundColor: theme.surface, color: theme.accent }}>
             {remainingPlotTwists} plot twist{remainingPlotTwists === 1 ? '' : 's'} remaining

@@ -45,14 +45,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     notFound();
   }
 
-  // Fetch authored stories by author_id (two-step verified)
-  const { data: authoredStories, error: authoredError } = await supabase
-    .from('stories')
-    .select('id, title, opening_line, genre, writer_count, max_writers, status')
-    .eq('author_id', profile.id)
-    .order('created_at', { ascending: false });
-
-  // Fetch contributed stories in two steps: get story_ids from story_participants, then fetch stories
   const { data: participantRows } = await supabase
     .from('story_participants')
     .select('story_id')
@@ -62,22 +54,17 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     .map((r: { story_id?: string | null }) => r.story_id)
     .filter((storyId): storyId is string => Boolean(storyId));
 
-  let contributedStories: Array<{ id: string; title: string; opening_line: string | null; genre: string | null; writer_count: number | null; max_writers: number | null; status: string | null; }> = [];
+  let completedStories: Array<{ id: string; title: string; opening_line: string | null; genre: string | null; writer_count: number | null; max_writers: number | null; status: string | null; }> = [];
   if (storyIds.length > 0) {
     const { data: contributedStoriesData } = await supabase
       .from('stories')
       .select('id, title, opening_line, genre, writer_count, max_writers, status')
       .in('id', storyIds)
+      .eq('status', 'completed')
       .order('created_at', { ascending: false });
 
-    contributedStories = contributedStoriesData ?? [];
+    completedStories = contributedStoriesData ?? [];
   }
-
-  // Debug logs to inspect returned ids and results
-  console.log('profile.id', profile.id);
-  console.log('authoredError:', authoredError);
-  console.log('authoredStories:', authoredStories);
-  console.log('contributedStories', contributedStories);
 
   return (
     <main className='min-h-screen bg-[#0a0a0a] text-white'>
@@ -107,83 +94,41 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           </div>
         </header>
 
-        <div className='grid gap-6 lg:grid-cols-[1fr_1fr]'>
-          <section className='space-y-4 border border-[#222222] bg-[#111111] p-6'>
-            <div className='border-b border-[#222222] pb-3'>
-              <h2 className='font-serif text-2xl font-semibold text-white'>Stories Started</h2>
+        <section className='space-y-4 border border-[#222222] bg-[#111111] p-6'>
+          <div className='border-b border-[#222222] pb-3'>
+            <h2 className='font-serif text-2xl font-semibold text-white'>Completed Stories</h2>
+          </div>
+          {completedStories.length > 0 ? (
+            <div className='grid gap-4 md:grid-cols-2'>
+              {completedStories.map((story) => {
+                const theme = genreThemes[(story.genre || '').toLowerCase() as keyof typeof genreThemes] ?? genreThemes.default;
+
+                return (
+                  <Link
+                    key={story.id}
+                    href={`/story/${story.id}`}
+                    className='block rounded-sm border p-5 transition hover:-translate-y-0.5'
+                    style={{ borderColor: theme.accent, backgroundColor: `${theme.accent}15` }}
+                  >
+                    <div className='flex items-center justify-between gap-3'>
+                      <h3 className='font-serif text-lg font-semibold text-white'>{story.title}</h3>
+                      <span className={badgeClass(story.genre)} style={{ color: theme.accentText }}>{story.genre || 'General'}</span>
+                    </div>
+                    <p className='mt-3 text-sm text-[#bdbdb7]'>{story.opening_line || 'No opening line available.'}</p>
+                    <div className='mt-4 flex flex-wrap gap-2 text-xs text-[#888888]'>
+                      <span className='rounded-sm border border-[#2a2a2a] bg-[#151515] px-3 py-1.5'>
+                        {story.writer_count ?? 0}/{story.max_writers ?? 0} writers
+                      </span>
+                      <span className='rounded-sm border border-[#2a2a2a] bg-[#151515] px-3 py-1.5 text-[#e8d5b7]'>Completed</span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-            {authoredStories && authoredStories.length > 0 ? (
-              <div className='space-y-4'>
-                {authoredStories.map((story) => {
-                  const theme = genreThemes[(story.genre || '').toLowerCase() as keyof typeof genreThemes] ?? genreThemes.default;
-
-                  return (
-                    <Link
-                      key={story.id}
-                      href={`/story/${story.id}`}
-                      className='block rounded-sm border p-5 transition hover:-translate-y-0.5'
-                      style={{ borderColor: theme.accent, backgroundColor: `${theme.accent}15` }}
-                    >
-                      <div className='flex items-center justify-between gap-3'>
-                        <h3 className='font-serif text-lg font-semibold text-white'>{story.title}</h3>
-                        <span className={badgeClass(story.genre)} style={{ color: theme.accentText }}>{story.genre || 'General'}</span>
-                      </div>
-                      <p className='mt-3 text-sm text-[#bdbdb7]'>{story.opening_line || 'No opening line available.'}</p>
-                      <div className='mt-4 flex flex-wrap gap-2 text-xs text-[#888888]'>
-                        <span className='rounded-sm border border-[#2a2a2a] bg-[#151515] px-3 py-1.5'>
-                          {story.writer_count ?? 0}/{story.max_writers ?? 0} writers
-                        </span>
-                        {story.status === 'completed' ? (
-                          <span className='rounded-sm border border-[#2a2a2a] bg-[#151515] px-3 py-1.5 text-[#e8d5b7]'>Completed</span>
-                        ) : null}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className='rounded-sm border border-[#222222] bg-[#111111] p-5 text-center text-sm italic text-[#888888]'>No stories started yet.</p>
-            )}
-          </section>
-
-          <section className='space-y-4 border border-[#222222] bg-[#111111] p-6'>
-            <div className='border-b border-[#222222] pb-3'>
-              <h2 className='font-serif text-2xl font-semibold text-white'>Stories Joined</h2>
-            </div>
-            {contributedStories && contributedStories.length > 0 ? (
-              <div className='space-y-4'>
-                {contributedStories.map((story) => {
-                  const theme = genreThemes[(story.genre || '').toLowerCase() as keyof typeof genreThemes] ?? genreThemes.default;
-
-                  return (
-                    <Link
-                      key={story.id}
-                      href={`/story/${story.id}`}
-                      className='block rounded-sm border p-5 transition hover:-translate-y-0.5'
-                      style={{ borderColor: theme.accent, backgroundColor: `${theme.accent}15` }}
-                    >
-                      <div className='flex items-center justify-between gap-3'>
-                        <h3 className='font-serif text-lg font-semibold text-white'>{story.title}</h3>
-                        <span className={badgeClass(story.genre)} style={{ color: theme.accentText }}>{story.genre || 'General'}</span>
-                      </div>
-                      <p className='mt-3 text-sm text-[#bdbdb7]'>{story.opening_line || 'No opening line available.'}</p>
-                      <div className='mt-4 flex flex-wrap gap-2 text-xs text-[#888888]'>
-                        <span className='rounded-sm border border-[#2a2a2a] bg-[#151515] px-3 py-1.5'>
-                          {story.writer_count ?? 0}/{story.max_writers ?? 0} writers
-                        </span>
-                        {story.status === 'completed' ? (
-                          <span className='rounded-sm border border-[#2a2a2a] bg-[#151515] px-3 py-1.5 text-[#e8d5b7]'>Completed</span>
-                        ) : null}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className='rounded-sm border border-[#222222] bg-[#111111] p-5 text-center text-sm italic text-[#888888]'>No joined stories found yet.</p>
-            )}
-          </section>
-        </div>
+          ) : (
+            <p className='rounded-sm border border-[#222222] bg-[#111111] p-5 text-center text-sm italic text-[#888888]'>No completed contributed stories yet.</p>
+          )}
+        </section>
       </section>
     </main>
   );

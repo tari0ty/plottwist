@@ -148,7 +148,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   const { data: participantData } = user
     ? await supabase
         .from('story_participants')
-        .select('id, turn_order, has_taken_turn')
+        .select('id, turn_order, has_taken_turn, turn_skipped, turn_started_at')
         .eq('story_id', id)
         .eq('user_id', user.id)
         .maybeSingle()
@@ -165,7 +165,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
 
   const { data: allParticipants } = await supabase
     .from('story_participants')
-    .select('id, turn_order, has_taken_turn, user_id, profiles(username)')
+    .select('id, turn_order, has_taken_turn, user_id, turn_skipped, turn_started_at, profiles(username)')
     .eq('story_id', id)
     .order('turn_order', { ascending: true });
 
@@ -179,12 +179,28 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
 
   const currentTurn = (turnsData?.length ?? 0) + 1;
   const nextParticipant = (allParticipants ?? [])
-    .filter((entry) => (turnsTakenByParticipant[entry.id] ?? 0) < (storyData.turns_per_writer ?? 1))
+    .filter((entry) => !entry.has_taken_turn && (turnsTakenByParticipant[entry.id] ?? 0) < (storyData.turns_per_writer ?? 1))
     .sort((left, right) => {
       const leftTurns = turnsTakenByParticipant[left.id] ?? 0;
       const rightTurns = turnsTakenByParticipant[right.id] ?? 0;
       return leftTurns - rightTurns || left.turn_order - right.turn_order;
     })[0] ?? null;
+
+  let currentTurnStartedAt = nextParticipant?.turn_started_at ?? null;
+
+  if (storyData.status === 'active' && nextParticipant && !currentTurnStartedAt) {
+    const startedAt = new Date().toISOString();
+    const { error: turnStartError } = await supabase
+      .from('story_participants')
+      .update({ turn_started_at: startedAt })
+      .eq('id', nextParticipant.id)
+      .is('turn_started_at', null);
+
+    if (!turnStartError) {
+      currentTurnStartedAt = startedAt;
+      nextParticipant.turn_started_at = startedAt;
+    }
+  }
 
   const theme = genreThemes[(storyData.genre || '').toLowerCase() as keyof typeof genreThemes] ?? genreThemes.default;
 
@@ -203,6 +219,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   const currentParticipantTurnCount = nextParticipant ? (turnsTakenByParticipant[nextParticipant.id] ?? 0) : 0;
   const currentProfile = nextParticipant?.profiles as { username?: string | null } | null | undefined;
   const currentUsername = currentProfile?.username ?? 'Someone';
+  const turnDeadline = currentTurnStartedAt ? new Date(new Date(currentTurnStartedAt).getTime() + 24 * 60 * 60 * 1000).toISOString() : null;
   const storyForClient = {
     id: storyData.id,
     title: storyData.title,
@@ -253,10 +270,53 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               isAuthor={user?.id === storyData.author_id}
               isParticipant={!!participantData}
               storyStatus={storyData.status}
+              turnDeadline={turnDeadline}
+              allParticipants={allParticipants ?? []}
               variant='header'
             />
           </div>
         </article>
+
+        <section className='mt-6 border p-5' style={{ backgroundColor: theme.surface, borderColor: theme.accent, borderWidth: '2px' }}>
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
+            <div>
+              <p className='text-xs uppercase tracking-[0.35em]' style={{ color: theme.accent }}>Writers</p>
+              <h2 className='mt-2 font-serif text-2xl font-semibold text-white'>Lineup</h2>
+            </div>
+            <div className='flex flex-wrap gap-3 text-xs text-[#bdbdb7]'>
+              <span>Yellow: current turn</span>
+              <span>Green: done</span>
+              <span>Grey: waiting</span>
+              <span>Red: skipped</span>
+            </div>
+          </div>
+
+          <div className='flex flex-wrap gap-5'>
+            {(allParticipants ?? []).map((participant) => {
+              const profile = participant.profiles as { username?: string | null } | null | undefined;
+              const username = profile?.username ?? 'Writer';
+              const borderColor = participant.turn_skipped
+                ? '#ef4444'
+                : nextParticipant?.id === participant.id
+                  ? '#facc15'
+                  : participant.has_taken_turn
+                    ? '#22c55e'
+                    : '#737373';
+
+              return (
+                <div key={participant.id} className='flex w-20 flex-col items-center gap-2 text-center'>
+                  <div
+                    className='flex h-12 w-12 items-center justify-center rounded-full border-2 bg-[#111111] text-sm font-black text-white'
+                    style={{ borderColor }}
+                  >
+                    {username.charAt(0).toUpperCase()}
+                  </div>
+                  <p className='max-w-full truncate text-xs text-[#f5f5f3]'>{username}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         <section className='mt-8 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]'>
           <article className='space-y-6'>
@@ -301,6 +361,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               isAuthor={user?.id === storyData.author_id}
               isParticipant={!!participantData}
               storyStatus={storyData.status}
+              turnDeadline={turnDeadline}
+              allParticipants={allParticipants ?? []}
               variant='timeline'
             />
           </article>
@@ -323,6 +385,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
               isAuthor={user?.id === storyData.author_id}
               isParticipant={!!participantData}
               storyStatus={storyData.status}
+              turnDeadline={turnDeadline}
+              allParticipants={allParticipants ?? []}
               variant='sidebar'
             />
 
