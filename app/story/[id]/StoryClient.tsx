@@ -416,25 +416,35 @@ export default function StoryClient({
         throw new Error(updateParticipantError.message);
       }
 
-      // Wait briefly for the update to propagate
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const { data: freshParticipants } = await supabase
+      // Reset the participant's turn_started_at for next round
+      await supabase
         .from('story_participants')
-        .select('has_taken_turn')
+        .update({ turn_started_at: null })
+        .eq('id', participant.id);
+
+      // Check completion directly from DB with fresh data
+      const { data: freshParticipants, error: freshError } = await supabase
+        .from('story_participants')
+        .select('id, has_taken_turn, turn_skipped')
         .eq('story_id', storyId);
 
-      const allDone = (freshParticipants ?? []).every((p) => p.has_taken_turn === true);
+      console.log('freshParticipants after update:', JSON.stringify(freshParticipants, null, 2));
 
-      console.log('freshParticipants:', freshParticipants);
-      console.log('allDone:', allDone);
+      if (freshError) {
+        throw new Error(freshError.message);
+      }
 
-      if (allDone) {
+      const totalParticipants = (freshParticipants ?? []).length;
+      const doneParticipants = (freshParticipants ?? []).filter((p) => p.has_taken_turn === true).length;
+
+      console.log('total:', totalParticipants, 'done:', doneParticipants);
+
+      if (totalParticipants > 0 && totalParticipants === doneParticipants) {
         const { error: completeError } = await supabase
           .from('stories')
           .update({ status: 'completed' })
           .eq('id', storyId);
-        console.log('completeError:', completeError);
+        console.log('completion error:', completeError);
       }
 
       setChoiceLocked(true);

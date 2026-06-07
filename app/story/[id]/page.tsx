@@ -188,6 +188,23 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
       return leftTurns - rightTurns || left.turn_order - right.turn_order;
     })[0] ?? null;
 
+  console.log('turnsTakenByParticipant:', JSON.stringify(turnsTakenByParticipant, null, 2));
+  console.log('turns_per_writer:', storyData.turns_per_writer);
+  console.log('allParticipants filtered:', JSON.stringify(
+    (allParticipants ?? []).map((p) => ({
+      id: p.id,
+      username: (p.profiles as any)?.username,
+      has_taken_turn: p.has_taken_turn,
+      turn_skipped: p.turn_skipped,
+      turnsTaken: turnsTakenByParticipant[p.id] ?? 0,
+      turns_per_writer: storyData.turns_per_writer ?? 1,
+      wouldPass: (turnsTakenByParticipant[p.id] ?? 0) < (storyData.turns_per_writer ?? 1),
+    })),
+    null,
+    2,
+  ));
+  console.log('nextParticipant:', JSON.stringify(nextParticipant, null, 2));
+
   let currentTurnStartedAt = nextParticipant?.turn_started_at ?? null;
 
   if (storyData.status === 'active' && nextParticipant && !currentTurnStartedAt) {
