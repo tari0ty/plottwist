@@ -166,11 +166,16 @@ export default function CreateStoryPage() {
                   value={turnsPerWriter}
                   onChange={(e) => setTurnsPerWriter(Number(e.target.value))}
                   min={1}
-                  max={5}
+                  max={20}
                   required
                   className='mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-400'
                 />
                 <span className='mt-1 block text-xs text-slate-400'>How many choices each writer gets to make</span>
+                {turnsPerWriter > 10 ? (
+                  <span className='mt-2 block rounded-sm border border-amber-400/40 bg-amber-400/10 p-3 text-xs font-semibold text-amber-200'>
+                    High twist counts may reduce story completion rates. We recommend 2-3 per writer.
+                  </span>
+                ) : null}
               </label>
 
               {error ? (
