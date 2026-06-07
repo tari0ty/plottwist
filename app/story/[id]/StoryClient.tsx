@@ -416,41 +416,18 @@ export default function StoryClient({
         throw new Error(updateParticipantError.message);
       }
 
-      const { data: allParticipants, error: participantsError } = await supabase
+      const { data: freshParticipants } = await supabase
         .from('story_participants')
-        .select('id')
+        .select('has_taken_turn')
         .eq('story_id', storyId);
 
-      if (participantsError) {
-        throw new Error(participantsError.message);
-      }
+      const allDone = (freshParticipants ?? []).every((p) => p.has_taken_turn === true);
 
-      const { data: allTurns, error: turnsError } = await supabase
-        .from('turns')
-        .select('participant_id')
-        .eq('story_id', storyId);
-
-      if (turnsError) {
-        throw new Error(turnsError.message);
-      }
-
-      const turnsTakenByParticipant = (allTurns ?? []).reduce<Record<string, number>>((acc, turn) => {
-        const participantId = turn.participant_id ?? null;
-        if (participantId) {
-          acc[participantId] = (acc[participantId] ?? 0) + 1;
-        }
-        return acc;
-      }, {});
-
-      if ((allParticipants ?? []).length > 0 && allParticipants.every((entry) => (turnsTakenByParticipant[entry.id] ?? 0) >= (story.turns_per_writer ?? 1))) {
-        const { error: completeStoryError } = await supabase
+      if (allDone) {
+        await supabase
           .from('stories')
           .update({ status: 'completed' })
           .eq('id', storyId);
-
-        if (completeStoryError) {
-          throw new Error(completeStoryError.message);
-        }
       }
 
       setChoiceLocked(true);
